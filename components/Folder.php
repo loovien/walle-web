@@ -68,18 +68,15 @@ class Folder extends Ansible {
      */
     public function scpCopyFiles(Project $project, TaskModel $task) {
 
-        // 1. 宿主机 tar 打包
-        $this->_packageFiles($project, $task);
-
-        // 2. 传输 tar.gz 文件
-        foreach (Project::getHosts() as $remoteHost) {
-            // 循环 scp 传输
-            $this->_copyPackageToServer($remoteHost, $project, $task);
+        $this->_packageFiles($project, $task); // 1. 宿主机 tar 打包
+        $that = $this;
+        foreach (Project::getHosts() as $remoteHost) { // 2. 传输 tar.gz 文件
+            ProcessManager::submitTask($project->name, function () use ($that, $remoteHost, $project, $task) {
+                $that->_copyPackageToServer($remoteHost, $project, $task); // 循环 scp 传输
+            });
         }
-
-        // 3. 目标机 tar 解压
-        $this->_unpackageFiles($project, $task);
-
+        ProcessManager::waitResp($project->name, true);
+        $this->_unpackageFiles($project, $task); // 3. 目标机 tar 解压
         return true;
     }
 
